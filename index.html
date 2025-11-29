@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>睡眠実験ログ</title>
+  <style>
+    :root {
+      --primary: #4c7df0;
+      --accent: #f0c849;
+      --bg: #f7f9fc;
+      --text: #1f2a44;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    header h1 { margin: 0; font-size: 20px; letter-spacing: 0.03em; }
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    nav button {
+      border: none;
+      background: rgba(255,255,255,0.12);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 600;
+    }
+    nav button.active {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+    nav button:hover { opacity: 0.92; }
+    main { padding: 20px; }
+    section { display: none; }
+    section.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    label { font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
+    input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fdfdfd;
+      font-size: 14px;
+    }
+    textarea { min-height: 100px; }
+    .checkbox-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 12px; }
+    .checkbox-item {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .btn {
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .btn-primary { background: var(--primary); color: white; box-shadow: 0 3px 10px rgba(76,125,240,0.22); }
+    .btn-secondary { background: #e5e7eb; color: var(--text); }
+    .btn:hover { transform: translateY(-1px); }
+    .flex { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .result {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eef2ff;
+      color: #4338ca;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; font-size: 14px; }
+    th { background: #f3f4f6; color: var(--muted); }
+    tr:hover { background: #f9fafb; }
+    .table-scroll { overflow-x: auto; }
+    canvas { width: 100%; max-height: 260px; }
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      display: none; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: white; border-radius: 10px; padding: 16px; width: min(720px, 95vw);
+      max-height: 90vh; overflow: auto;
+    }
+    .tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 8px; margin: 2px 4px 2px 0; font-size: 12px; }
+    .preview-img { max-width: 160px; max-height: 120px; display: block; margin-top: 6px; border-radius: 6px; border: 1px solid var(--border); }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .highlight { color: #111827; font-size: 24px; font-weight: 800; }
+    .secondary-text { color: #6b7280; font-size: 13px; }
+    .card-title { margin: 0 0 8px; font-size: 16px; }
+    @media (max-width: 640px) { nav button { flex: 1; text-align: center; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>睡眠実験ログ</h1>
+    <nav>
+      <button data-tab="record" class="active">今日の記録</button>
+      <button data-tab="list">一覧・グラフ</button>
+      <button data-tab="settings">設定</button>
+    </nav>
+  </header>
+  <main>
+    <section id="record" class="active">
+      <div class="card">
+        <h2 class="card-title">今日の記録を追加</h2>
+        <div class="grid">
+          <div>
+            <label for="date">日付</label>
+            <input type="date" id="date" />
+          </div>
+          <div>
+            <label for="sleepStart">就寝時刻</label>
+            <input type="time" id="sleepStart" />
+          </div>
+          <div>
+            <label for="wakeTime">起床時刻</label>
+            <input type="time" id="wakeTime" />
+          </div>
+          <div>
+            <label for="totalSleepMinutes">総睡眠時間 (分)</label>
+            <div class="flex">
+              <input type="number" id="totalSleepMinutes" min="0" placeholder="例: 420" />
+              <button class="btn btn-secondary" id="calcTotal">就寝・起床から計算</button>
+            </div>
+          </div>
+          <div>
+            <label for="totalSleep">総睡眠時間（HH:MM）</label>
+            <input type="text" id="totalSleep" placeholder="例: 07:00" />
+          </div>
+          <div>
+            <label for="deepSleep">深い睡眠（HH:MM）</label>
+            <input type="text" id="deepSleep" placeholder="例: 01:30" />
+          </div>
+          <div>
+            <label for="lightSleep">浅い睡眠（HH:MM）</label>
+            <input type="text" id="lightSleep" placeholder="例: 04:00" />
+          </div>
+          <div>
+            <label for="remSleep">レム睡眠（HH:MM）</label>
+            <input type="text" id="remSleep" placeholder="例: 01:00" />
+          </div>
+          <div>
+            <label for="lightSleepPercent">浅い睡眠割合（%）</label>
+            <input type="number" id="lightSleepPercent" min="0" max="100" step="0.1" placeholder="例: 63" />
+          </div>
+          <div>
+            <label for="sleepScore">睡眠スコア</label>
+            <input type="number" id="sleepScore" min="0" />
+          </div>
+          <div>
+            <label for="awakenings">中途覚醒回数</label>
+            <input type="number" id="awakenings" min="0" step="1" />
+          </div>
+          <div>
+            <label for="sleepinessScore">眠気スコア (1-5)</label>
+            <select id="sleepinessScore">
+              <option value="">選択してください</option>
+              <option value="1">1 (とても眠い)</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5 (すっきり)</option>
+            </select>
+          </div>
+          <div class="flex" style="align-items: center;">
+            <input type="checkbox" id="headacheYesterday" />
+            <label for="headacheYesterday" style="margin: 0;">昨日は頭痛があった</label>
+          </div>
+          <div>
+            <label for="imageUpload">睡眠ログ画像</label>
+            <input type="file" id="imageUpload" accept="image/*" />
+            <img id="imagePreview" class="preview-img" style="display:none;" alt="プレビュー" />
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <label for="sleepLogJsonInput">AIからの睡眠ログコードを貼り付け</label>
+          <div class="flex" style="align-items: flex-start;">
+            <textarea id="sleepLogJsonInput" placeholder='{"version":"SleepLogJSON_v2",...}' style="flex: 1; min-height: 80px;"></textarea>
+            <button class="btn btn-secondary" id="applySleepLogJsonButton">コードを反映</button>
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <label for="notes">メモ</label>
+          <textarea id="notes" placeholder="メモを入力"></textarea>
+        </div>
+        <div style="margin-top: 16px;">
+          <p style="margin: 0 0 8px; font-weight: 700;">昨日やった工夫</p>
+          <div class="checkbox-group" id="experiments"></div>
+        </div>
+        <div style="margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="saveRecord">保存</button>
+        </div>
+        <p id="recordMessage" class="muted" style="margin-top: 8px;"></p>
+      </div>
+      <div class="card" id="resultCard" style="display:none;">
+        <h2 class="card-title">スコア & 比較</h2>
+        <div class="result">
+          <div>
+            <div class="secondary-text">疑似スコア</div>
+            <div class="highlight" id="pseudoScoreDisplay">-</div>
+          </div>
+          <div>
+            <div class="secondary-text">前日比 (睡眠/スコア)</div>
+            <div class="highlight" id="deltaYesterdayDisplay">-</div>
+          </div>
+          <div>
+            <div class="secondary-text">前曜日比 (睡眠/スコア)</div>
+            <div class="highlight" id="deltaWeekdayDisplay">-</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="tomorrowCard" style="display:none;">
+        <h2 class="card-title">明日の一歩オススメ案</h2>
+        <div id="tomorrowSteps" class="chips"></div>
+      </div>
+    </section>
+
+    <section id="list">
+      <div class="card">
+        <div class="flex" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <h2 class="card-title">記録一覧</h2>
+          <div class="flex" style="gap: 8px;">
+            <button class="btn btn-secondary" id="downloadCsv">CSVダウンロード</button>
+          </div>
+        </div>
+        <div class="grid" style="margin-bottom: 12px;">
+          <div>
+            <div class="secondary-text">直近7日 平均</div>
+            <div class="highlight" id="avgRecent">-</div>
+          </div>
+          <div>
+            <div class="secondary-text">その前7日 平均</div>
+            <div class="highlight" id="avgPrevious">-</div>
+          </div>
+          <div>
+            <div class="secondary-text">差分</div>
+            <div class="highlight" id="avgDiff">-</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>曜</th>
+                <th>疑似スコア</th>
+                <th>睡眠(分)</th>
+                <th>総睡眠(HH:MM)</th>
+                <th>睡眠スコア</th>
+                <th>眠気</th>
+                <th>頭痛</th>
+                <th>詳細</th>
+              </tr>
+            </thead>
+            <tbody id="recordTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="card-title">グラフ</h2>
+        <div class="grid">
+          <div>
+            <p class="muted" style="margin:0 0 4px;">疑似スコア推移</p>
+            <canvas id="scoreChart" width="400" height="240"></canvas>
+          </div>
+          <div>
+            <p class="muted" style="margin:0 0 4px;">総睡眠時間推移</p>
+            <canvas id="sleepChart" width="400" height="240"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings">
+      <div class="card">
+        <h2 class="card-title">理想パターン設定</h2>
+        <div class="grid">
+          <div>
+            <h3>平日</h3>
+            <label for="idealWeekdaySleepStart">理想就寝時刻</label>
+            <input type="time" id="idealWeekdaySleepStart" />
+            <label for="idealWeekdayWakeTime">理想起床時刻</label>
+            <input type="time" id="idealWeekdayWakeTime" />
+            <label for="idealWeekdayDurationMinutes">理想総睡眠時間(分)</label>
+            <input type="number" id="idealWeekdayDurationMinutes" min="0" />
+            <label for="idealWeekdayAwakenings">許容中途覚醒</label>
+            <input type="number" id="idealWeekdayAwakenings" min="0" />
+          </div>
+          <div>
+            <h3>休日</h3>
+            <label for="idealWeekendSleepStart">理想就寝時刻</label>
+            <input type="time" id="idealWeekendSleepStart" />
+            <label for="idealWeekendWakeTime">理想起床時刻</label>
+            <input type="time" id="idealWeekendWakeTime" />
+            <label for="idealWeekendDurationMinutes">理想総睡眠時間(分)</label>
+            <input type="number" id="idealWeekendDurationMinutes" min="0" />
+            <label for="idealWeekendAwakenings">許容中途覚醒</label>
+            <input type="number" id="idealWeekendAwakenings" min="0" />
+          </div>
+        </div>
+        <div style="margin-top: 16px;">
+          <button class="btn btn-primary" id="saveSettings">設定を保存</button>
+          <span id="settingMessage" class="muted"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="detailModal">
+    <div class="modal-content">
+      <div class="flex" style="justify-content: space-between; align-items: center;">
+        <h3 id="detailTitle" style="margin:0;"></h3>
+        <button class="btn btn-secondary" id="closeModal">閉じる</button>
+      </div>
+      <div id="detailBody" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <script>
+    const DATA_KEY = "sleepExperimentData";
+    const SETTINGS_KEY = "sleepExperimentSettings";
+    const EXPERIMENT_MASTER = [
+      { id: "EXP01", label: "寝る30分前からスマホを見ない" },
+      { id: "EXP02", label: "寝る90分前からカフェインを取らない" },
+      { id: "EXP03", label: "寝る前に5分だけストレッチする" },
+      { id: "EXP04", label: "寝る前に湯舟につかるか足湯をする" },
+      { id: "EXP05", label: "寝る前のYouTubeは完全なし＋自然音だけにする" },
+      { id: "EXP06", label: "土日の起床時間を平日＋1時間以内にする" },
+      { id: "EXP07", label: "寝る前に『やらないことリスト』を1回読み返す" },
+      { id: "EXP08", label: "寝る30分前から部屋の照明を少し暗くする" },
+      { id: "EXP09", label: "寝る2時間前以降は重い仕事の話をしない" },
+      { id: "EXP10", label: "寝る前の水分はコップ1杯だけにする" }
+    ];
+
+    const weekdayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+
+    const $ = (selector) => document.querySelector(selector);
+
+    const formatDiff = (val) => {
+      if (val === null || val === undefined) return "-";
+      const sign = val > 0 ? "+" : "";
+      return `${sign}${val}`;
+    };
+
+    function loadData() {
+      const raw = localStorage.getItem(DATA_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }
+
+    function saveData(data) {
+      localStorage.setItem(DATA_KEY, JSON.stringify(data));
+    }
+
+    function loadSettings() {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return JSON.parse(raw);
+      return {
+        idealWeekdaySleepStart: "23:00",
+        idealWeekdayWakeTime: "06:00",
+        idealWeekdayDurationMinutes: 420,
+        idealWeekdayAwakenings: 1,
+        idealWeekendSleepStart: "23:30",
+        idealWeekendWakeTime: "07:00",
+        idealWeekendDurationMinutes: 440,
+        idealWeekendAwakenings: 1,
+      };
+    }
+
+    function saveSettings(settings) {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function getWeekday(dateStr) {
+      const d = new Date(dateStr);
+      return weekdayLabels[d.getDay()];
+    }
+
+    function isWeekend(weekday) {
+      return weekday === "土" || weekday === "日";
+    }
+
+    function timeToMinutes(timeStr) {
+      if (!timeStr) return null;
+      const [h, m] = timeStr.split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    function minutesToTimeString(minutes) {
+      if (minutes === null || minutes === undefined || Number.isNaN(minutes)) return "";
+      const hrs = Math.floor(minutes / 60);
+      const mins = Math.round(minutes % 60);
+      return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+    }
+
+    function calcDurationMinutes(start, end) {
+      if (!start || !end) return null;
+      const s = timeToMinutes(start);
+      const e = timeToMinutes(end);
+      if (s === null || e === null) return null;
+      let diff = e - s;
+      if (diff < 0) diff += 24 * 60;
+      return diff;
+    }
+
+    function calculatePseudoScore(record, settings) {
+      const weekday = record.weekday;
+      const ideal = isWeekend(weekday)
+        ? {
+            sleepStart: settings.idealWeekendSleepStart,
+            wakeTime: settings.idealWeekendWakeTime,
+            duration: settings.idealWeekendDurationMinutes,
+            awakenings: Number(settings.idealWeekendAwakenings || 0),
+          }
+        : {
+            sleepStart: settings.idealWeekdaySleepStart,
+            wakeTime: settings.idealWeekdayWakeTime,
+            duration: settings.idealWeekdayDurationMinutes,
+            awakenings: Number(settings.idealWeekdayAwakenings || 0),
+          };
+
+      let score = 100;
+      const startDiff = Math.abs((timeToMinutes(record.sleepStart) ?? 0) - (timeToMinutes(ideal.sleepStart) ?? 0));
+      score -= Math.min(30, Math.floor(startDiff / 30) * 5);
+
+      const wakeDiff = Math.abs((timeToMinutes(record.wakeTime) ?? 0) - (timeToMinutes(ideal.wakeTime) ?? 0));
+      score -= Math.min(30, Math.floor(wakeDiff / 30) * 5);
+
+      const durDiff = Math.abs((record.totalSleepMinutes || 0) - (ideal.duration || 0));
+      score -= Math.min(24, Math.floor(durDiff / 30) * 4);
+
+      const awakenPenalty = Math.max(0, (record.awakenings || 0) - (ideal.awakenings || 0));
+      score -= awakenPenalty * 5;
+
+      return Math.max(0, Math.min(100, Math.round(score)));
+    }
+
+    function computeDelta(current, previous) {
+      if (!previous) return { sleepMinutesDiff: null, pseudoScoreDiff: null };
+      return {
+        sleepMinutesDiff: current.totalSleepMinutes - (previous.totalSleepMinutes || 0),
+        pseudoScoreDiff: current.pseudoScore - (previous.pseudoScore || 0),
+      };
+    }
+
+    function renderExperiments() {
+      const container = $("#experiments");
+      container.innerHTML = "";
+      EXPERIMENT_MASTER.forEach((exp) => {
+        const id = `exp-${exp.id}`;
+        const wrapper = document.createElement("label");
+        wrapper.className = "checkbox-item";
+        wrapper.innerHTML = `<input type="checkbox" id="${id}" value="${exp.id}" /> <span>${exp.label}</span>`;
+        container.appendChild(wrapper);
+      });
+    }
+
+    function fillSettingsForm(settings) {
+      $("#idealWeekdaySleepStart").value = settings.idealWeekdaySleepStart || "";
+      $("#idealWeekdayWakeTime").value = settings.idealWeekdayWakeTime || "";
+      $("#idealWeekdayDurationMinutes").value = settings.idealWeekdayDurationMinutes ?? "";
+      $("#idealWeekdayAwakenings").value = settings.idealWeekdayAwakenings ?? "";
+      $("#idealWeekendSleepStart").value = settings.idealWeekendSleepStart || "";
+      $("#idealWeekendWakeTime").value = settings.idealWeekendWakeTime || "";
+      $("#idealWeekendDurationMinutes").value = settings.idealWeekendDurationMinutes ?? "";
+      $("#idealWeekendAwakenings").value = settings.idealWeekendAwakenings ?? "";
+    }
+
+    function setDefaultDate() {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, "0");
+      const d = String(today.getDate()).padStart(2, "0");
+      $("#date").value = `${y}-${m}-${d}`;
+    }
+
+    function toggleTab(target) {
+      document.querySelectorAll("nav button").forEach((btn) => btn.classList.remove("active"));
+      document.querySelector(`nav button[data-tab="${target}"]`).classList.add("active");
+      document.querySelectorAll("main section").forEach((sec) => sec.classList.remove("active"));
+      $(`#${target}`).classList.add("active");
+    }
+
+    function validateRecord(form) {
+      const required = ["date", "sleepStart", "wakeTime", "totalSleepMinutes", "awakenings", "sleepinessScore"];
+      for (const key of required) {
+        if (!form[key]) return false;
+      }
+      return true;
+    }
+
+    function generateId(date) {
+      return `${date}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function getRecordByDate(records, targetDate) {
+      return records.find((r) => r.date === targetDate);
+    }
+
+    function calcYesterday(dateStr) {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function calcLastWeekday(dateStr) {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() - 7);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function selectTomorrowSteps(records) {
+      const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
+      const recent = sorted.slice(0, 7);
+      const used = new Set();
+      recent.forEach((r) => (r.experimentsTried || []).forEach((id) => used.add(id)));
+      const candidates = EXPERIMENT_MASTER.filter((exp) => !used.has(exp.id));
+      const picks = [];
+      const pool = candidates.length ? candidates : EXPERIMENT_MASTER;
+      const poolCopy = [...pool];
+      while (picks.length < 3 && poolCopy.length) {
+        const idx = Math.floor(Math.random() * poolCopy.length);
+        picks.push(poolCopy.splice(idx, 1)[0]);
+      }
+      return picks;
+    }
+
+    function renderTable(records) {
+      const tbody = $("#recordTableBody");
+      tbody.innerHTML = "";
+      const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
+      sorted.forEach((r) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.date}</td>
+          <td>${r.weekday}</td>
+          <td>${r.pseudoScore ?? "-"}</td>
+          <td>${r.totalSleepMinutes}</td>
+          <td>${r.totalSleep || "-"}</td>
+          <td>${r.sleepScore ?? "-"}</td>
+          <td>${r.sleepinessScore}</td>
+          <td>${r.headacheYesterday ? "◯" : "-"}</td>
+          <td><button class="btn btn-secondary" data-id="${r.id}">詳細</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", () => openDetail(btn.dataset.id, records));
+      });
+    }
+
+    function renderAverages(records) {
+      const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
+      const recent = sorted.slice(0, 7);
+      const prev = sorted.slice(7, 14);
+      const avg = (arr, key) => {
+        if (!arr.length) return 0;
+        return Math.round(arr.reduce((s, r) => s + (r[key] || 0), 0) / arr.length);
+      };
+      const recentScore = avg(recent, "pseudoScore");
+      const recentSleep = avg(recent, "totalSleepMinutes");
+      const prevScore = avg(prev, "pseudoScore");
+      const prevSleep = avg(prev, "totalSleepMinutes");
+      $("#avgRecent").textContent = recent.length
+        ? `疑似 ${recentScore} 点 / ${recentSleep} 分`
+        : "-";
+      $("#avgPrevious").textContent = prev.length
+        ? `疑似 ${prevScore} 点 / ${prevSleep} 分`
+        : "-";
+      $("#avgDiff").textContent = recent.length && prev.length
+        ? `+${recentScore - prevScore} 点 / +${recentSleep - prevSleep} 分`
+        : "-";
+    }
+
+    function drawLineChart(canvas, data, label) {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!data.length) {
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillText("データなし", 10, 20);
+        return;
+      }
+      const padding = 32;
+      const w = canvas.width - padding * 2;
+      const h = canvas.height - padding * 2;
+      const maxVal = Math.max(...data.map((d) => d.value));
+      const minVal = Math.min(...data.map((d) => d.value));
+      const span = maxVal === minVal ? 1 : maxVal - minVal;
+      ctx.strokeStyle = "#e5e7eb";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, padding + h);
+      ctx.lineTo(padding + w, padding + h);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#4c7df0";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      data.forEach((point, idx) => {
+        const x = padding + (w * idx) / Math.max(1, data.length - 1);
+        const y = padding + h - ((point.value - minVal) / span) * h;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = "#4c7df0";
+      data.forEach((point, idx) => {
+        const x = padding + (w * idx) / Math.max(1, data.length - 1);
+        const y = padding + h - ((point.value - minVal) / span) * h;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "12px sans-serif";
+      ctx.fillText(label, padding, padding - 8);
+    }
+
+    function renderCharts(records) {
+      const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+      const scoreData = sorted.map((r) => ({ label: r.date, value: r.pseudoScore || 0 }));
+      const sleepData = sorted.map((r) => ({ label: r.date, value: r.totalSleepMinutes || 0 }));
+      drawLineChart($("#scoreChart"), scoreData, "疑似スコア");
+      drawLineChart($("#sleepChart"), sleepData, "総睡眠時間");
+    }
+
+    function openDetail(id, records) {
+      const record = records.find((r) => r.id === id);
+      if (!record) return;
+      $("#detailTitle").textContent = `${record.date} (${record.weekday}) の詳細`;
+      const expLabels = (record.experimentsTried || []).map((id) => {
+        const found = EXPERIMENT_MASTER.find((e) => e.id === id);
+        return found ? found.label : id;
+      });
+      const deltas = (obj) => obj ? `${formatDiff(obj.sleepMinutesDiff)} 分 / ${formatDiff(obj.pseudoScoreDiff)} 点` : "-";
+      $("#detailBody").innerHTML = `
+        <div class="grid">
+          <div><div class="secondary-text">就寝</div><div class="highlight">${record.sleepStart}</div></div>
+          <div><div class="secondary-text">起床</div><div class="highlight">${record.wakeTime}</div></div>
+          <div><div class="secondary-text">総睡眠</div><div class="highlight">${record.totalSleepMinutes} 分</div></div>
+          <div><div class="secondary-text">総睡眠 (HH:MM)</div><div class="highlight">${record.totalSleep || "-"}</div></div>
+          <div><div class="secondary-text">中途覚醒</div><div class="highlight">${record.awakenings}</div></div>
+          <div><div class="secondary-text">深い睡眠</div><div class="highlight">${record.deepSleep || "-"}</div></div>
+          <div><div class="secondary-text">浅い睡眠</div><div class="highlight">${record.lightSleep || "-"}</div></div>
+          <div><div class="secondary-text">レム睡眠</div><div class="highlight">${record.remSleep || "-"}</div></div>
+          <div><div class="secondary-text">浅い睡眠割合</div><div class="highlight">${record.lightSleepRatio !== null && record.lightSleepRatio !== undefined ? Math.round(record.lightSleepRatio * 100) + "%" : "-"}</div></div>
+          <div><div class="secondary-text">睡眠スコア</div><div class="highlight">${record.sleepScore ?? "-"}</div></div>
+          <div><div class="secondary-text">眠気スコア</div><div class="highlight">${record.sleepinessScore}</div></div>
+          <div><div class="secondary-text">疑似スコア</div><div class="highlight">${record.pseudoScore}</div></div>
+          <div><div class="secondary-text">前日比</div><div class="highlight">${deltas(record.deltaVsYesterday)}</div></div>
+          <div><div class="secondary-text">前曜日比</div><div class="highlight">${deltas(record.deltaVsLastWeekday)}</div></div>
+        </div>
+        <p class="secondary-text" style="margin-top:8px;">実施した一歩実験</p>
+        <div>${expLabels.map((l) => `<span class="tag">${l}</span>`).join("") || "-"}</div>
+        <p class="secondary-text" style="margin-top:8px;">メモ</p>
+        <div style="white-space: pre-wrap;">${record.notes || "-"}</div>
+        ${record.imageDataUrl ? `<p class="secondary-text" style="margin-top:8px;">画像</p><img src="${record.imageDataUrl}" class="preview-img" alt="ログ画像" />` : ""}
+      `;
+      $("#detailModal").classList.add("active");
+    }
+
+    function updateGraphsAndTable() {
+      const records = loadData();
+      renderTable(records);
+      renderCharts(records);
+      renderAverages(records);
+    }
+
+    function downloadCsv(records) {
+      if (!records.length) return;
+      const headers = ["date","weekday","sleepStart","wakeTime","totalSleep","totalSleepMinutes","deepSleep","lightSleep","remSleep","lightSleepRatio","sleepScore","awakenings","sleepinessScore","headacheYesterday","pseudoScore","experimentsTried","notes"];
+      const lines = [headers.join(",")];
+      records.forEach((r) => {
+        const values = [
+          r.date,
+          r.weekday,
+          r.sleepStart,
+          r.wakeTime,
+          r.totalSleep || "",
+          r.totalSleepMinutes,
+          r.deepSleep || "",
+          r.lightSleep || "",
+          r.remSleep || "",
+          r.lightSleepRatio ?? "",
+          r.sleepScore ?? "",
+          r.awakenings,
+          r.sleepinessScore,
+          r.headacheYesterday,
+          r.pseudoScore,
+          (r.experimentsTried || []).join("|"),
+          (r.notes || "").replace(/\n/g, " "),
+        ];
+        lines.push(values.join(","));
+      });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "sleep-experiment.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function bindEvents() {
+      document.querySelectorAll("nav button").forEach((btn) => {
+        btn.addEventListener("click", () => toggleTab(btn.dataset.tab));
+      });
+
+      $("#calcTotal").addEventListener("click", () => {
+        const start = $("#sleepStart").value;
+        const end = $("#wakeTime").value;
+        const diff = calcDurationMinutes(start, end);
+        if (diff !== null) {
+          $("#totalSleepMinutes").value = diff;
+          $("#totalSleep").value = minutesToTimeString(diff);
+        }
+      });
+
+      const autoFillTotalSleep = () => {
+        const start = $("#sleepStart").value;
+        const end = $("#wakeTime").value;
+        const diff = calcDurationMinutes(start, end);
+        if (diff !== null) {
+          $("#totalSleepMinutes").value = diff;
+          $("#totalSleep").value = minutesToTimeString(diff);
+        }
+      };
+
+      ["#sleepStart", "#wakeTime"].forEach((selector) => {
+        const el = $(selector);
+        if (el) {
+          el.addEventListener("change", autoFillTotalSleep);
+          el.addEventListener("input", autoFillTotalSleep);
+        }
+      });
+
+      $("#applySleepLogJsonButton").addEventListener("click", () => {
+        const raw = $("#sleepLogJsonInput").value.trim();
+        if (!raw) {
+          alert("JSONの形式が正しくありません。");
+          return;
+        }
+
+        let obj;
+        try {
+          obj = JSON.parse(raw);
+        } catch (e) {
+          alert("JSONの形式が正しくありません。");
+          return;
+        }
+
+        const requiredKeys = [
+          "date",
+          "sleepStart",
+          "wakeTime",
+          "totalSleep",
+          "totalSleepMinutes",
+          "awakenings",
+          "deepSleep",
+          "lightSleep",
+          "remSleep",
+          "lightSleepRatio",
+          "sleepScore",
+        ];
+        const hasAllRequired = requiredKeys.every((key) => obj?.[key] !== undefined);
+
+        if (obj.version !== "SleepLogJSON_v2" || !hasAllRequired) {
+          alert("サポートされていない形式のコードです。");
+          return;
+        }
+
+        const setValue = (selector, value) => {
+          const el = $(selector);
+          if (!el) return;
+          el.value = value ?? "";
+        };
+
+        setValue("#date", obj.date);
+        setValue("#sleepStart", obj.sleepStart);
+        setValue("#wakeTime", obj.wakeTime);
+        const autoDiff = calcDurationMinutes(obj.sleepStart, obj.wakeTime);
+        if (autoDiff !== null) {
+          setValue("#totalSleepMinutes", autoDiff);
+          setValue("#totalSleep", minutesToTimeString(autoDiff));
+        } else {
+          setValue("#totalSleepMinutes", obj.totalSleepMinutes);
+          setValue("#totalSleep", obj.totalSleep);
+        }
+        setValue("#awakenings", obj.awakenings);
+        setValue("#deepSleep", obj.deepSleep);
+        setValue("#lightSleep", obj.lightSleep);
+        setValue("#remSleep", obj.remSleep);
+        setValue("#lightSleepPercent", Math.round(Number(obj.lightSleepRatio) * 100));
+        setValue("#sleepScore", obj.sleepScore);
+      });
+
+      $("#imageUpload").addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const url = reader.result;
+          const img = $("#imagePreview");
+          img.src = url;
+          img.style.display = "block";
+          img.dataset.url = url;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      $("#saveSettings").addEventListener("click", () => {
+        const settings = {
+          idealWeekdaySleepStart: $("#idealWeekdaySleepStart").value,
+          idealWeekdayWakeTime: $("#idealWeekdayWakeTime").value,
+          idealWeekdayDurationMinutes: Number($("#idealWeekdayDurationMinutes").value),
+          idealWeekdayAwakenings: Number($("#idealWeekdayAwakenings").value),
+          idealWeekendSleepStart: $("#idealWeekendSleepStart").value,
+          idealWeekendWakeTime: $("#idealWeekendWakeTime").value,
+          idealWeekendDurationMinutes: Number($("#idealWeekendDurationMinutes").value),
+          idealWeekendAwakenings: Number($("#idealWeekendAwakenings").value),
+        };
+        saveSettings(settings);
+        $("#settingMessage").textContent = "保存しました";
+        setTimeout(() => ($("#settingMessage").textContent = ""), 2000);
+      });
+
+      $("#saveRecord").addEventListener("click", () => {
+        const form = {
+          date: $("#date").value,
+          sleepStart: $("#sleepStart").value,
+          wakeTime: $("#wakeTime").value,
+          totalSleepMinutes: Number($("#totalSleepMinutes").value),
+          totalSleep: $("#totalSleep").value,
+          deepSleep: $("#deepSleep").value,
+          lightSleep: $("#lightSleep").value,
+          remSleep: $("#remSleep").value,
+          lightSleepRatio: $("#lightSleepPercent").value === "" ? null : Number($("#lightSleepPercent").value) / 100,
+          sleepScore: $("#sleepScore").value === "" ? null : Number($("#sleepScore").value),
+          awakenings: Number($("#awakenings").value),
+          sleepinessScore: Number($("#sleepinessScore").value),
+          headacheYesterday: $("#headacheYesterday").checked,
+          notes: $("#notes").value,
+          experimentsTried: Array.from(document.querySelectorAll("#experiments input:checked")).map((el) => el.value),
+          imageDataUrl: $("#imagePreview").dataset.url || null,
+        };
+
+        if (!validateRecord(form)) {
+          $("#recordMessage").textContent = "必須項目を入力してください";
+          return;
+        }
+
+        if (!form.totalSleep && Number.isFinite(form.totalSleepMinutes)) {
+          form.totalSleep = minutesToTimeString(form.totalSleepMinutes);
+        }
+
+        const settings = loadSettings();
+        const records = loadData();
+        const weekday = getWeekday(form.date);
+        const pseudoScore = calculatePseudoScore({ ...form, weekday }, settings);
+        const yesterdayRecord = getRecordByDate(records, calcYesterday(form.date));
+        const lastWeekRecord = getRecordByDate(records, calcLastWeekday(form.date));
+        const record = {
+          id: generateId(form.date),
+          ...form,
+          weekday,
+          pseudoScore,
+          deltaVsYesterday: computeDelta({ ...form, pseudoScore }, yesterdayRecord),
+          deltaVsLastWeekday: computeDelta({ ...form, pseudoScore }, lastWeekRecord),
+        };
+        records.push(record);
+        saveData(records);
+        $("#recordMessage").textContent = "保存しました";
+        updateGraphsAndTable();
+        renderResult(record);
+        renderTomorrow(records);
+        $("#imagePreview").style.display = "none";
+        $("#imagePreview").dataset.url = "";
+        document.querySelectorAll("#experiments input").forEach((el) => (el.checked = false));
+      });
+
+      $("#downloadCsv").addEventListener("click", () => downloadCsv(loadData()));
+      $("#closeModal").addEventListener("click", () => $("#detailModal").classList.remove("active"));
+    }
+
+    function renderResult(record) {
+      $("#resultCard").style.display = "block";
+      $("#pseudoScoreDisplay").textContent = `${record.pseudoScore} 点`;
+      const deltas = (obj) => obj ? `${formatDiff(obj.sleepMinutesDiff)} 分 / ${formatDiff(obj.pseudoScoreDiff)} 点` : "-";
+      $("#deltaYesterdayDisplay").textContent = deltas(record.deltaVsYesterday);
+      $("#deltaWeekdayDisplay").textContent = deltas(record.deltaVsLastWeekday);
+    }
+
+    function renderTomorrow(records) {
+      const steps = selectTomorrowSteps(records);
+      const container = $("#tomorrowSteps");
+      container.innerHTML = steps.map((s) => `<span class="tag">${s.label}</span>`).join("");
+      $("#tomorrowCard").style.display = steps.length ? "block" : "none";
+    }
+
+    function renderLatestSummary(records) {
+      if (!records.length) {
+        $("#resultCard").style.display = "none";
+        $("#tomorrowCard").style.display = records.length ? "block" : "none";
+        return;
+      }
+      const latest = [...records].sort((a, b) => b.date.localeCompare(a.date))[0];
+      renderResult(latest);
+      renderTomorrow(records);
+    }
+
+    function init() {
+      renderExperiments();
+      setDefaultDate();
+      const settings = loadSettings();
+      fillSettingsForm(settings);
+      bindEvents();
+      updateGraphsAndTable();
+      renderLatestSummary(loadData());
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
